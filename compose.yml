@@ -1,0 +1,84 @@
+volumes:
+  snort_log:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=100m
+  snort_data:
+
+services:
+  snort:
+#    build:
+#      context: .
+#      dockerfile: dockerfiles/debian.dockerfile
+    image: ghcr.io/mata-elang-stable/snort3-docker-image:v2.0-debian-fix
+    # restart: unless-stopped
+    network_mode: host
+    depends_on:
+      snort-parser:
+        condition: service_healthy
+    environment:
+      SNORT_OINKCODE: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      NETWORK_INTERFACE: eth0
+      DOWNLOAD_RULES: false
+#      SNORT_COMPRESSED_RULES_FILE_PATH: /tmp/rules/snortrules-snapshot-3200.tar.gz
+      COMMUNITY_RULESET: false
+      REGISTERED_RULESET: false
+      LIGHTSPD_RULESET: false
+      SNORT_BLOCKLIST: false
+      ET_BLOCKLIST: false
+      BLOCKLIST_URLS:
+      IPS_POLICY: balanced
+    volumes:
+      - snort_log:/var/log/snort:rw
+#      - snort_data:/usr/local/etc/snort3
+      - ./rules/custom.rules:/usr/local/etc/snort3/rules/local.rules:ro
+      - ./rules:/tmp/rules:ro
+      # - ./conf/snort.lua:/usr/local/etc/snort/snort.lua:ro
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: unless-stopped
+        delay: 10s
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+
+  snort-parser:
+    build:
+      context: .
+      target: build
+#    image: ghcr.io/mata-elang-stable/sensor-snort-service:latest
+    restart: unless-stopped
+    command: "client -v"
+    environment:
+      MES_CLIENT_FILE: /var/log/snort/alert_json.txt
+      MES_CLIENT_SERVER: 172.17.0.1
+      MES_CLIENT_PORT: 50051
+      MES_CLIENT_SENSOR_ID: sensor-1
+    volumes:
+      - snort_log:/var/log/snort:rw
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: unless-stopped
+        delay: 10s
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  pinger:
+    image: busybox:latest
+    command: ping 192.168.65.3
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      snort:
+        condition: service_started
+      snort-parser:
+        condition: service_healthy

@@ -37,7 +37,7 @@ func init() {
 	conf := config.GetConfig()
 
 	clientConfig := conf.Client()
-	viper.SetDefault("file", "./tmp/alert_json_10.txt")
+	viper.SetDefault("file", "/var/log/snort/alert_json.txt")
 	viper.SetDefault("server", "localhost")
 	viper.SetDefault("port", 50051)
 	viper.SetDefault("insecure", false)
