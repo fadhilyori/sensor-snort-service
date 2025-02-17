@@ -3,14 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/mata-elang-stable/sensor-snort-service/internal/listener"
-	"github.com/mata-elang-stable/sensor-snort-service/internal/prometheus_exporter"
-	"io"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/mata-elang-stable/sensor-snort-service/internal/listener"
+	"github.com/mata-elang-stable/sensor-snort-service/internal/prometheus_exporter"
 )
 
 func main() {
@@ -37,17 +36,6 @@ func main() {
 }
 
 // handleConnection processes each connection. In this example, it echoes back data.
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
-	//if _, err := io.Copy(conn, conn); err != nil {
-	//	log.Printf("Error handling connection: %v", err)
-	//}
-
-	// Read the incoming connection into a buffer
-	data, err := io.ReadAll(conn)
-	if err != nil {
-		log.Println("Error reading:", err.Error())
-		return
-	}
-	fmt.Printf("Received %d bytes: %s\n", len(data), string(data))
+func handleConnection(data []byte) {
+	fmt.Printf("Received bytes: %x\n", data)
 }

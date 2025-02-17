@@ -20,7 +20,7 @@ services:
         condition: service_healthy
     environment:
       SNORT_OINKCODE: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-      NETWORK_INTERFACE: eth0
+      NETWORK_INTERFACE: wlp0s20f3
       DOWNLOAD_RULES: false
 #      SNORT_COMPRESSED_RULES_FILE_PATH: /tmp/rules/snortrules-snapshot-3200.tar.gz
       COMMUNITY_RULESET: false
@@ -32,7 +32,7 @@ services:
       IPS_POLICY: balanced
     volumes:
       - snort_log:/var/log/snort:rw
-#      - snort_data:/usr/local/etc/snort3
+      - snort_data:/usr/local/etc/snort3
       - ./rules/custom.rules:/usr/local/etc/snort3/rules/local.rules:ro
       - ./rules:/tmp/rules:ro
       # - ./conf/snort.lua:/usr/local/etc/snort/snort.lua:ro
@@ -71,14 +71,3 @@ services:
         limits:
           cpus: "1"
           memory: 512M
-
-  pinger:
-    image: busybox:latest
-    command: ping 192.168.65.3
-    restart: unless-stopped
-    network_mode: host
-    depends_on:
-      snort:
-        condition: service_started
-      snort-parser:
-        condition: service_healthy
