@@ -14,13 +14,13 @@ services:
 #      dockerfile: dockerfiles/debian.dockerfile
     image: ghcr.io/mata-elang-stable/snort3-docker-image:v2.0-debian-fix
     # restart: unless-stopped
-    network_mode: host
+    # network_mode: host
     depends_on:
       snort-parser:
         condition: service_healthy
     environment:
       SNORT_OINKCODE: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-      NETWORK_INTERFACE: wlp0s20f3
+      NETWORK_INTERFACE: eth0
       DOWNLOAD_RULES: false
 #      SNORT_COMPRESSED_RULES_FILE_PATH: /tmp/rules/snortrules-snapshot-3200.tar.gz
       COMMUNITY_RULESET: false
@@ -71,3 +71,8 @@ services:
         limits:
           cpus: "1"
           memory: 512M
+
+  pinger:
+    image: busybox:latest
+    restart: unless-stopped
+    command: ping snort
