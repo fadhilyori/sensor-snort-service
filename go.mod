@@ -5,6 +5,7 @@ go 1.23
 require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.8.0
 	github.com/google/go-cmp v0.6.0
+	github.com/google/gopacket v1.1.19
 	github.com/nxadm/tail v1.4.11
 	github.com/prometheus/client_golang v1.20.5
 	github.com/sirupsen/logrus v1.9.3

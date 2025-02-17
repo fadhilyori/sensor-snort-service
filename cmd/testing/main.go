@@ -37,5 +37,14 @@ func main() {
 
 // handleConnection processes each connection. In this example, it echoes back data.
 func handleConnection(data []byte) {
-	fmt.Printf("Received bytes: %x\n", data)
+	// fmt.Printf("Received bytes: %x\n", data)
+	parsedData, err := listener.ParseAlertPacket(data)
+	if err != nil {
+		log.Printf("Error parsing data: %v", err)
+		return
+	}
+
+	// fmt.Printf("Alert message: %s\n", parsedData.AlertMsg)
+	// fmt.Printf("Parsed data: %+v\n", parsedData)
+	listener.ParseRawPacket(parsedData.Pkt)
 }
