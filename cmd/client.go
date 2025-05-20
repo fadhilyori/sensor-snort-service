@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/viper"
 
-	_ "net/http/pprof"
+	// _ "net/http/pprof"
 
 	"github.com/mata-elang-stable/sensor-snort-service/internal/output/grpc"
 
