@@ -12,7 +12,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   BUILDER_NAME: mybuilder
-  BUILD_PLATFORMS_TARGET: ${{ vars.BUILD_PLATFORMS_TARGET }}
+  BUILD_PLATFORMS_TARGET: linux/amd64,linux/arm64
 
 jobs:
   build-and-push:
