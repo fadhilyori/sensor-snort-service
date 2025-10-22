@@ -36,6 +36,8 @@ type CertOpts struct {
 	Insecure   bool
 }
 
+// NewGRPCStreamClient creates a new gRPC client that streams data to the server
+// Deprecated: Use NewStreamManager instead
 func NewGRPCStreamClient(mainCtx context.Context, server string, port int, certOpts CertOpts, maxMessageSize int) (*Messenger, error) {
 	ctx, cancel := context.WithCancel(mainCtx)
 
@@ -116,8 +118,10 @@ func (g *Messenger) StreamData(ctx context.Context, payloads []*pb.SensorEvent) 
 		log.WithField("package", "grpc").Infoln("Context is done. Stopping the stream.")
 		return nil
 	default:
+		// initialize the stream
 		stream, err := g.client.StreamData(ctx)
 		if err != nil {
+			log.Errorf("Failed to open stream: %v", err)
 			return err
 		}
 

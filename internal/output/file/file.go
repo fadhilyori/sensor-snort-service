@@ -57,6 +57,9 @@ func (g *Messenger) StreamData(ctx context.Context, payload *pb.SensorEvent) {
 }
 
 func (g *Messenger) Disconnect() {
-	g.jsonFile.Close()
+	if err := g.jsonFile.Close(); err != nil {
+		log.Errorln("Failed to close file:", err)
+		return
+	}
 	log.Infoln("File stream closed.")
 }

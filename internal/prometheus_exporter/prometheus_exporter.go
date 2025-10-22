@@ -76,6 +76,7 @@ func NewMetrics() *Metrics {
 func (prom *Metrics) StartServer(ctx context.Context) error {
 	server := &http.Server{
 		Addr: ":9101",
+		ReadHeaderTimeout: time.Second * 5,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/metrics" {
 				promhttp.HandlerFor(

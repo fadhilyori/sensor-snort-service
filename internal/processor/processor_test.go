@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/mata-elang-stable/sensor-snort-service/internal/pb"
 	"github.com/mata-elang-stable/sensor-snort-service/internal/types"
+	"google.golang.org/protobuf/proto"
 )
 
 func toPtr[T any](d T) *T {
@@ -196,6 +197,8 @@ func Test_ConvertSnortAlertToSensorEvent(t *testing.T) {
 				SensorId:            "sensor-v2",
 				SensorVersion:       "v2",
 				EventHashSha256:     "ddf1571108fffa276a60a670a30655799b5d68e47eb7a4f106e1826fa26450fb",
+				EventMetricsCount:   1,
+				EventSeconds:        1728513131,
 				EventSentAt:         1732161976384394,
 				EventReadAt:         1732161973907043,
 				EventReceivedAt:     1732161976404502,
@@ -250,9 +253,9 @@ func Test_ConvertSnortAlertToSensorEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, got1 := ConvertSnortAlertToSensorEvent(tt.args.data); !reflect.DeepEqual(got, tt.want) || !reflect.DeepEqual(got1, tt.want1) {
+			if got, got1 := ConvertSnortAlertToSensorEvent(tt.args.data); !proto.Equal(got, tt.want) || !proto.Equal(got1, tt.want1) {
 				t.Errorf("ConvertSnortAlertToSensorEvent() = %v, want %v", got, tt.want)
-				t.Errorf("ConvertSnortAlertToSensorEvent() = %v, want %v", got1, tt.want1)
+				t.Errorf("ConvertSnortAlertToSensorEvent() metrics = %v, want %v", got1, tt.want1)
 			}
 		})
 	}

@@ -12,19 +12,16 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// StreamManager wraps gRPC stream and auto-closes it after a timeout.
-// It reuses streams to reduce connection overhead and properly cleans up
-// goroutines when closing streams.
+// StreamManager wraps your gRPC stream and auto-closes it after a timeout.
 type StreamManager struct {
 	client  pb.SensorServiceClient
-	conn    *grpc.ClientConn
 	mu      sync.Mutex
 	stream  pb.SensorService_StreamDataClient
 	timer   *time.Timer
 	timeout time.Duration
 }
 
-// NewStreamManager creates a new StreamManager with connection pooling and timeout.
+// NewStreamManager creates a new StreamManager.
 func NewStreamManager(server string, port int, certOpts CertOpts, maxMessageSize int, timeout time.Duration) (*StreamManager, error) {
 	var creds credentials.TransportCredentials
 	var err error
@@ -52,7 +49,6 @@ func NewStreamManager(server string, port int, certOpts CertOpts, maxMessageSize
 
 	return &StreamManager{
 		client:  pb.NewSensorServiceClient(conn),
-		conn:    conn,
 		timeout: timeout,
 	}, nil
 }
@@ -63,120 +59,82 @@ func (sm *StreamManager) getStream() (pb.SensorService_StreamDataClient, error) 
 	defer sm.mu.Unlock()
 
 	if sm.stream != nil {
-		sm.resetTimerLocked()
+		sm.resetTimer() // Reset the timeout on activity.
 		return sm.stream, nil
 	}
 
-	log.Infoln("Creating new gRPC stream")
+	log.Infoln("Reconnecting to stream")
 
 	stream, err := sm.client.StreamData(context.Background())
 	if err != nil {
 		return nil, err
 	}
 	sm.stream = stream
-	sm.resetTimerLocked()
+	sm.resetTimer()
 	return sm.stream, nil
 }
 
-// resetTimerLocked resets the inactivity timer. Must be called with mu held.
-func (sm *StreamManager) resetTimerLocked() {
+// resetTimer resets the inactivity timer.
+func (sm *StreamManager) resetTimer() {
 	if sm.timer != nil {
 		sm.timer.Stop()
 	}
 	sm.timer = time.AfterFunc(sm.timeout, func() {
 		sm.mu.Lock()
 		defer sm.mu.Unlock()
-		log.Infoln("Stream timeout reached; closing stream properly")
-		sm.closeStreamLocked()
+		log.Println("Timeout reached; closing stream")
+		if sm.stream != nil {
+			if err := sm.stream.CloseSend(); err != nil {
+				log.Errorln("Failed to close stream on timeout:", err)
+			}
+			sm.stream = nil
+		}
 	})
 }
 
-func (sm *StreamManager) closeStreamLocked() {
-	if sm.stream == nil {
-		return
-	}
-
-	if _, err := sm.stream.CloseAndRecv(); err != nil {
-		log.WithField("package", "grpc").Debugf("Stream closed: %v", err)
-	}
-	sm.stream = nil
-}
-
-// SendEvent sends a single event over the stream and resets the timer.
+// SendEvent sends an event over the stream and resets the timer.
 func (sm *StreamManager) SendEvent(event *pb.SensorEvent) error {
-	event.EventSentAt = time.Now().UnixMicro()
-
 	stream, err := sm.getStream()
 	if err != nil {
 		return err
 	}
-
-	log.WithField("package", "grpc").Tracef("Sending data to gRPC server: \n\t%v\n", event)
-
 	if err := stream.Send(event); err != nil {
+		// If sending fails, close the stream so that it will be reestablished next time.
 		sm.mu.Lock()
-		sm.closeStreamLocked()
+		sm.stream = nil
 		sm.mu.Unlock()
 		return err
 	}
 	return nil
 }
 
-// SendBulkEvent sends multiple events and returns total count.
 func (sm *StreamManager) SendBulkEvent(ctx context.Context, events []*pb.SensorEvent) (int64, error) {
 	totalEvents := int64(0)
-	maxRetries := 3
 
 	for i := 0; i < len(events); {
-		retryCount := 0
-
-		for retryCount < maxRetries {
-			select {
-			case <-ctx.Done():
-				return totalEvents, ctx.Err()
-			default:
-				if err := sm.SendEvent(events[i]); err != nil {
-					retryCount++
-
-					if retryCount >= maxRetries {
-						log.WithField("package", "grpc").Errorf("Failed to send event after %d retries, skipping: %v", maxRetries, err)
-						break
-					}
-
-					log.WithField("package", "grpc").Warnf("Failed to send event (attempt %d/%d), retrying: %v", retryCount, maxRetries, err)
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-
-				// Success
-				totalEvents += events[i].EventMetricsCount
-				break
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		default:
+			if err := sm.SendEvent(events[i]); err != nil {
+				continue
 			}
+
+			totalEvents += events[i].EventMetricsCount
+			i++
 		}
-		i++
 	}
 
 	return totalEvents, nil
 }
 
-// Close closes the stream manager and cleans up resources.
 func (sm *StreamManager) Close() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-
-	if sm.timer != nil {
-		sm.timer.Stop()
-		sm.timer = nil
-	}
-
-	sm.closeStreamLocked()
-
-	if sm.conn != nil {
-		if err := sm.conn.Close(); err != nil {
-			log.WithField("package", "grpc").Errorf("Failed to close gRPC connection: %v", err)
+	if sm.stream != nil {
+		if err := sm.stream.CloseSend(); err != nil {
+			log.Errorln("Failed to close stream:", err)
 		}
-		sm.conn = nil
+		sm.stream = nil
 	}
-
-	log.WithField("package", "grpc").Infoln("StreamManager closed")
 }
