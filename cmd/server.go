@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -144,10 +145,21 @@ func runServer(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer(
-		grpc.MaxRecvMsgSize(confInstance.GRPCMaxMsgSize*1024*1024),
-		grpc.MaxSendMsgSize(confInstance.GRPCMaxMsgSize*1024*1024),
-	)
+	opts := []grpc.ServerOption{
+		grpc.MaxRecvMsgSize(confInstance.GRPCMaxMsgSize * 1024 * 1024),
+		grpc.MaxSendMsgSize(confInstance.GRPCMaxMsgSize * 1024 * 1024),
+	}
+	if conf.GRPCSecure {
+		creds, err = credentials.NewServerTLSFromFile(conf.GRPCCertFile, conf.GRPCKeyFile)
+		if err != nil {
+			log.Fatalf("Failed to load TLS %v", err)
+		}
+
+		opts = append(opts, grpc.Creds(creds))
+	}
+
+	grpcServer := grpc.NewServer(opts...)
+
 	pb.RegisterSensorServiceServer(grpcServer, &server{
 		kafkaProducerInstance: producer,
 	})
