@@ -134,7 +134,12 @@ func runServer(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to create kafka producer: %v", err)
 	}
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.GRPCHost, conf.GRPCPort))
+	// Initialize gRPC server
+	if conf.GRPCSecure {
+
+	} else {
+		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.GRPCHost, conf.GRPCPort))
+	}
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
