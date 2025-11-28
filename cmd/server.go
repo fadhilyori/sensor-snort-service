@@ -55,6 +55,8 @@ func init() {
 		"Specifies the host to listen to.")
 	flags.IntVarP(&serverConfig.GRPCPort, "port", "p", serverConfig.GRPCPort, "Specifies the gRPC port.")
 	flags.BoolVar(&serverConfig.GRPCSecure, "insecure", serverConfig.GRPCSecure, "Specifies whether the connection is secure or not.")
+	flags.StringVar(&serverConfig.GRPCCertFile, "certiticate", serverConfig.GRPCCertFile, "Specifies whether the connection is secure or not.")
+	flags.StringVar(&serverConfig.GRPCKeyFile, "key", serverConfig.GRPCKeyFile, "Specifies whether the connection is secure or not.")
 	flags.IntVarP(&conf.GRPCMaxMsgSize, "max-message-size", "m", conf.GRPCMaxMsgSize, "Specifies the maximum message size.")
 	flags.StringVar(&serverConfig.SchemaRegistryUrl, "schema-registry-url", serverConfig.SchemaRegistryUrl, "Specifies the schema registry URL.")
 	flags.StringVar(&serverConfig.KafkaBrokers, "kafka-broker", serverConfig.KafkaBrokers, "Specifies the Kafka broker to connect to.")
