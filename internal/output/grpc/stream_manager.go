@@ -125,21 +125,35 @@ func (sm *StreamManager) SendEvent(event *pb.SensorEvent) error {
 // SendBulkEvent sends multiple events and returns total count.
 func (sm *StreamManager) SendBulkEvent(ctx context.Context, events []*pb.SensorEvent) (int64, error) {
 	totalEvents := int64(0)
+	maxRetries := 3
 
 	for i := 0; i < len(events); {
-		select {
-		case <-ctx.Done():
-			return totalEvents, ctx.Err()
-		default:
-			if err := sm.SendEvent(events[i]); err != nil {
-				log.WithField("package", "grpc").Warnf("Failed to send event, retrying: %v", err)
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
+		retryCount := 0
 
-			totalEvents += events[i].EventMetricsCount
-			i++
+		for retryCount < maxRetries {
+			select {
+			case <-ctx.Done():
+				return totalEvents, ctx.Err()
+			default:
+				if err := sm.SendEvent(events[i]); err != nil {
+					retryCount++
+
+					if retryCount >= maxRetries {
+						log.WithField("package", "grpc").Errorf("Failed to send event after %d retries, skipping: %v", maxRetries, err)
+						break
+					}
+
+					log.WithField("package", "grpc").Warnf("Failed to send event (attempt %d/%d), retrying: %v", retryCount, maxRetries, err)
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+
+				// Success
+				totalEvents += events[i].EventMetricsCount
+				break
+			}
 		}
+		i++
 	}
 
 	return totalEvents, nil
